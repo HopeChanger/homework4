@@ -1,9 +1,4 @@
-# homework4
-第二次结队编程(函数定义直接复制！函数定义直接复制！函数定义直接复制！)
-hw4.cpp
-#include "FindContours.h"
+# Homework4
 
-int USTC_Find_Contours(Mat binaryImg, vector < vector < cv::Point >>& contours)
-{
-  //todo:find contours
-}
+USTC 2017Fall Modern Software Engineering \
+Homework 4: **Contour Finding**
