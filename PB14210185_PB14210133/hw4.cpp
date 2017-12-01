@@ -7,17 +7,24 @@ int USTC_Find_Contours(Mat binaryImg, vector< vector< cv::Point >>& contours)
 		cout << "Input image is invalid." << endl;
 		return MY_FAIL;
 	}
-	int height = binaryImg.rows, width = binaryImg.cols;
-	copyMakeBorder(binaryImg, binaryImg, 1, 1, 1, 1, BORDER_CONSTANT, 0);
 
-	//////////////////////连通域标记//////////////////////
+	int height = binaryImg.rows, width = binaryImg.cols;
+	Mat ex_binaryImg(height + 2, width + 2, CV_8UC1, Scalar(0));
+	for (int i = 0; i < height; i++) {
+		uint8_t *grayImg_line = binaryImg.ptr<uint8_t>(i);
+		uint8_t *binaryImg_line = ex_binaryImg.ptr<uint8_t>(i + 1);
+		for (int j = 0; j < width; j++) {
+			binaryImg_line[j + 1] = ((100 - grayImg_line[j]) >> 31) & 1;
+		}
+	}
+
 	Mat ex_labelImg(height + 2, width + 2, CV_32SC1, Scalar(0));
 	vector<int> result;
 	result.push_back(0);
 	for (int i = 1; i <= height; i++) 
 	{
-		uchar *binImg_preline = binaryImg.ptr<uchar>(i - 1);
-		uchar *binImg_line = binaryImg.ptr<uchar>(i);
+		uchar *binImg_preline = ex_binaryImg.ptr<uchar>(i - 1);
+		uchar *binImg_line = ex_binaryImg.ptr<uchar>(i);
 		long *labImg_preline = ex_labelImg.ptr<long>(i - 1);
 		long *labImg_line = ex_labelImg.ptr<long>(i);
 		for (int j = 1; j <= width; j++) 
@@ -111,9 +118,7 @@ int USTC_Find_Contours(Mat binaryImg, vector< vector< cv::Point >>& contours)
 			labImg_line[j] = result.at(exlabImg_line[j]);
 		}
 	}
-	//////////////////////连通域标记//////////////////////
 
-	//////////////////////轮廓标记//////////////////////
 	int row_bias[8];
 	int col_bias[8];
 	row_bias[0] = 0; col_bias[0] = 1;
@@ -163,8 +168,10 @@ int USTC_Find_Contours(Mat binaryImg, vector< vector< cv::Point >>& contours)
 					contours.push_back(contour);
 					continue;
 				}
+				
+				Point second_posi = now_posi;
 
-				do
+				while(1)
 				{
 					contour.push_back(Point(now_posi.x - 1, now_posi.y - 1));
 					bool end_flag = true;
@@ -186,14 +193,33 @@ int USTC_Find_Contours(Mat binaryImg, vector< vector< cv::Point >>& contours)
 						now_posi = Point(now_posi.x + col_bias[last_posi], now_posi.y + row_bias[last_posi]);
 						last_posi = (last_posi + 4) % 8;
 					}
-				} while (now_posi != first_posi);
-				contour.push_back(Point(first_posi.x - 1, first_posi.y - 1));
+					if (now_posi == first_posi) {
+						contour.push_back(Point(now_posi.x - 1, now_posi.y - 1));
+						bool end_flag = true;
+						for (int p = 2; p <= 6; p++)
+						{
+							int posi = (last_posi + p) % 8;
+							int row = now_posi.y + row_bias[posi];
+							int col = now_posi.x + col_bias[posi];
+							if (ptr_data[row*(width + 2) + col] == label)
+							{
+								last_posi = (posi + 4) % 8;
+								now_posi = Point(col, row);
+								end_flag = false;
+								break;
+							}
+						}
+						if (end_flag || now_posi == second_posi)
+						{
+							break;
+						}
+					}
+				}
 				contours.push_back(contour);
 				used_label.push_back(label);
 			}
 		}
 	}
-	//////////////////////轮廓标记//////////////////////
 
 	return MY_OK;
 }
